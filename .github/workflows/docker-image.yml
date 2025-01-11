@@ -1,0 +1,32 @@
+name: Build and Publish Docker Image
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Docker Image
+      run: |
+        docker build -t ghcr.io/${{ github.repository_owner }}/superghost-backend:latest .
+        docker tag ghcr.io/${{ github.repository_owner }}/superghost-backend:latest ghcr.io/${{ github.repository_owner }}/superghost-backend:${{ github.sha }}
+
+    - name: Push Docker Image
+      run: |
+        docker push ghcr.io/${{ github.repository_owner }}/superghost-backend:latest
+        docker push ghcr.io/${{ github.repository_owner }}/superghost-backend:${{ github.sha }}
