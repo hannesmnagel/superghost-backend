@@ -7,6 +7,26 @@ import FoundationNetworking
 
 func routes(_ app: Application) throws {
 
+	app.get("apple-app-site-association") { req -> Response in
+    let jsonString = """
+    {
+      "applinks": {
+        "apps": [],
+        "details": [
+          {
+            "appID": "X5933694SW.com.nagel.superghost",
+            "paths": [ "*" ]
+          }
+        ]
+      }
+    }
+    """
+    
+    var headers = HTTPHeaders()
+    headers.add(name: .contentType, value: "application/json")
+    return Response(status: .ok, headers: headers, body: .init(string: jsonString))
+}
+
     //Serving template for private games: superghost/private/*
     app.get("v3", "private", "*"){req async throws in
         try await req.fileio.asyncStreamFile(at: app.directory.publicDirectory.appending("joinGameInSuperghostApp"))
