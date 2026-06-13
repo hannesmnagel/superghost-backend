@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { AppServices } from '../../app.js'
 import { publicUser } from '../../services/auth.js'
-import { makeRequireAuth, userId, notFound, conflict } from './common.js'
+import { makeRequireAuth, userId, notFound, conflict, badRequest } from './common.js'
 
 const HANDLE_RE = /^[a-zA-Z0-9_\-]{2,24}$/
 const ALLOWED_SKINS = [
@@ -27,6 +27,8 @@ export function registerProfileRoutes(app: FastifyInstance, services: AppService
 
     if (skin && !ALLOWED_SKINS.includes(skin)) throw conflict('Invalid skin')
     if (handle) {
+      const moderation = await services.moderation.check(handle)
+      if (!moderation.allowed) throw badRequest('That handle isn\'t allowed. Please choose another.')
       const existing = await users.findByHandle(handle)
       if (existing && existing.id !== userId(req)) throw conflict('Handle already taken')
     }

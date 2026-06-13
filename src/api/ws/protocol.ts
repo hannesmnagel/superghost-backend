@@ -13,6 +13,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('submitWord'), word: z.string().min(1).max(60) }),
   z.object({ type: z.literal('admitLie') }),
   z.object({ type: z.literal('resign') }),
+  z.object({ type: z.literal('cancel') }),
   z.object({ type: z.literal('resume'), matchId: z.string() }),
   z.object({ type: z.literal('ping') }),
 ])

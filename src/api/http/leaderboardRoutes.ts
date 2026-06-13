@@ -19,11 +19,14 @@ export function registerLeaderboardRoutes(app: FastifyInstance, services: AppSer
   const requireAuth = makeRequireAuth(services)
   const { users } = services.repos
 
-  // Global top N (bots included — they hold real ratings).
+  // Global ranked list, paginated (bots included — they hold real ratings).
+  // ?limit=50&offset=0 — lets the client page through the entire leaderboard.
   app.get('/leaderboard/top', { preHandler: requireAuth }, async (req) => {
-    const limit = Math.min(parseInt((req.query as any).limit ?? '50', 10) || 50, 100)
-    const top = await users.topByRating(limit)
-    return top.map((u, i) => entry(u, i + 1))
+    const q = req.query as { limit?: string; offset?: string }
+    const limit = Math.min(parseInt(q.limit ?? '50', 10) || 50, 100)
+    const offset = Math.max(0, parseInt(q.offset ?? '0', 10) || 0)
+    const rows = await users.windowByRating(offset, limit)
+    return rows.map((u, i) => entry(u, offset + i + 1))
   })
 
   // 11-entry window centered on the calling user.

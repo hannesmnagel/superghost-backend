@@ -142,9 +142,27 @@ export class MatchService {
     else setTimeout(() => void run(), delay)
   }
 
+  /** A game that is genuinely in progress — both players seated, not a finished/abandoned lobby. */
+  private activeGameFor(userId: string): LiveGame | undefined {
+    const g = this.gameByUser.get(userId)
+    if (g && !g.isFinished() && g.getPhase() !== 'lobby') return g
+    return undefined
+  }
+
+  /**
+   * Tear down an unstarted hosting lobby (or a finished leftover) and any queue entry for this
+   * user, so a hosted game that nobody joined can never get "stuck" and block matchmaking.
+   */
+  abandonStaleLobby(userId: string): void {
+    this.cancelQueue(userId)
+    const g = this.gameByUser.get(userId)
+    if (g && (g.getPhase() === 'lobby' || g.isFinished())) this.removeGame(g)
+  }
+
   async quickmatch(player: PlayerInfo, isSuperghost: boolean, lang: Lang): Promise<LiveGame> {
-    const existing = this.gameByUser.get(player.userId)
-    if (existing && !existing.isFinished()) return existing
+    const active = this.activeGameFor(player.userId)
+    if (active) return active
+    this.abandonStaleLobby(player.userId)
 
     const key = `${isSuperghost}:${lang}`
     const waiting = this.queue.get(key)
@@ -207,8 +225,9 @@ export class MatchService {
   }
 
   hostGame(player: PlayerInfo, isSuperghost: boolean, lang: Lang): LiveGame {
-    const existing = this.gameByUser.get(player.userId)
-    if (existing && !existing.isFinished()) return existing
+    const active = this.activeGameFor(player.userId)
+    if (active) return active
+    this.abandonStaleLobby(player.userId)
     const game = this.newGame({ isSuperghost, language: lang, inviteCode: generateCode(), isPrivate: true })
     this.attach(game, player)
     game.addPlayer(player)
@@ -221,8 +240,30 @@ export class MatchService {
     if (!game) throw new Error('Game not found')
     if (game.hasPlayer(player.userId)) return game
     if (game.playerCount() >= 2) throw new Error('Game is full')
+    this.abandonStaleLobby(player.userId) // joining ends any lobby of my own
     this.attach(game, player)
     game.addPlayer(player)
+    return game
+  }
+
+  /** Seat two players into a fresh private match (used when a challenge is accepted). */
+  async createChallengeMatch(challengerId: string, accepterId: string): Promise<LiveGame> {
+    if (this.activeGameFor(challengerId)) throw new Error('Challenger is already in a game')
+    if (this.activeGameFor(accepterId)) throw new Error('You are already in a game')
+    const [u1, u2] = await Promise.all([
+      this.repos.users.findById(challengerId),
+      this.repos.users.findById(accepterId),
+    ])
+    if (!u1 || !u2) throw new Error('User not found')
+    this.abandonStaleLobby(challengerId)
+    this.abandonStaleLobby(accepterId)
+    const game = this.newGame({ isSuperghost: true, language: 'en', isPrivate: true })
+    const p1 = userToPlayer(u1)
+    const p2 = userToPlayer(u2)
+    this.attach(game, p1)
+    this.attach(game, p2)
+    game.addPlayer(p1)
+    game.addPlayer(p2)
     return game
   }
 

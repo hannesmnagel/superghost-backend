@@ -87,6 +87,27 @@ describe('bots participate in rating (leaderboard)', () => {
     expect(matches[0]!.player2Id).toBe(bot.userId)
   })
 
+  it('a stale hosting lobby does not block matchmaking (regression)', async () => {
+    const human = await repos.users.create({ handle: 'erin', rating: 1000 })
+    const lobby = svc.hostGame(userToPlayer(human), false, 'en')
+    expect(lobby.getPhase()).toBe('lobby')
+    expect(svc.getGameById(lobby.id)).toBeDefined()
+
+    // Quickmatching must abandon the unstarted lobby, not return it forever.
+    const game = await svc.quickmatch(userToPlayer(human), false, 'en')
+    expect(game.id).not.toBe(lobby.id)
+    expect(game.getPlayers()).toHaveLength(2) // got a real opponent (bot)
+    expect(svc.getGameById(lobby.id)).toBeUndefined() // lobby torn down
+  })
+
+  it('createChallengeMatch seats both players and starts', async () => {
+    const a = await repos.users.create({ handle: 'frank', rating: 1000 })
+    const b = await repos.users.create({ handle: 'grace', rating: 1000 })
+    const game = await svc.createChallengeMatch(a.id, b.id)
+    expect(game.getPlayers().map(p => p.userId).sort()).toEqual([a.id, b.id].sort())
+    expect(game.getState().phase).toBe('playing')
+  })
+
   it('the bot actually responds with a move after the human plays (regression)', async () => {
     const human = await repos.users.create({ handle: 'dave', rating: 1000 })
     const game = await svc.quickmatch(userToPlayer(human), false, 'en')

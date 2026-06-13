@@ -9,6 +9,8 @@ const schema = z.object({
   JWT_REFRESH_EXPIRES_DAYS: z.coerce.number().default(60),
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().default('tencent/hy3-preview'),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODERATION_MODEL: z.string().default('omni-moderation-latest'),
   APPLE_BUNDLE_ID: z.string().default('com.nagel.superghost'),
   BOT_FILL_MS: z.coerce.number().default(5000),
   TURN_TIMEOUT_MS: z.coerce.number().default(30000),

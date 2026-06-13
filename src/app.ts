@@ -2,6 +2,7 @@ import type { Repositories } from './data/repositories.js'
 import { createTokenService, type TokenService } from './services/tokens.js'
 import { createAuthService, type AuthService, type AppleVerifier } from './services/auth.js'
 import { createOpenRouterAiService, type AiService } from './services/ai.js'
+import { createModerationService, type ModerationService } from './services/moderation.js'
 import { MatchService } from './services/match.js'
 
 export interface AppConfigValues {
@@ -11,6 +12,8 @@ export interface AppConfigValues {
   openRouterKey?: string
   openRouterModel: string
   aiTimeoutMs: number
+  openaiKey?: string
+  openaiModerationModel: string
   turnTimeoutMs: number
   botFillMs: number
   reconnectGraceMs: number
@@ -21,6 +24,7 @@ export interface AppServices {
   tokens: TokenService
   auth: AuthService
   ai: AiService
+  moderation: ModerationService
   matches: MatchService
   config: AppConfigValues
 }
@@ -49,10 +53,11 @@ export function createServices(deps: CreateServicesDeps): AppServices {
       timeoutMs: config.aiTimeoutMs,
     })
   const auth = createAuthService(repos, tokens, deps.appleVerifier)
+  const moderation = createModerationService({ apiKey: config.openaiKey, model: config.openaiModerationModel })
   const matches = new MatchService({
     repos,
     ai,
     config: { turnTimeoutMs: config.turnTimeoutMs, botFillMs: config.botFillMs },
   })
-  return { repos, tokens, auth, ai, matches, config }
+  return { repos, tokens, auth, ai, moderation, matches, config }
 }

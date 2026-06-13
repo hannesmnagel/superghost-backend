@@ -19,6 +19,7 @@ export function testConfig(over: Partial<AppConfigValues> = {}): AppConfigValues
     refreshExpiresDays: 60,
     openRouterModel: 'test-model',
     aiTimeoutMs: 1000,
+    openaiModerationModel: 'test-moderation',
     turnTimeoutMs: 5000,
     botFillMs: 20,
     reconnectGraceMs: 200,

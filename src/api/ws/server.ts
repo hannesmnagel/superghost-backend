@@ -4,42 +4,16 @@ import type { AppServices } from '../../app.js'
 import type { LiveGame, PlayerInfo } from '../../domain/game/engine.js'
 import { userToPlayer } from '../../services/match.js'
 import * as registry from './registry.js'
+import { wireGameBroadcast } from './broadcast.js'
 import { clientMessageSchema, type ClientMessage } from './protocol.js'
-
-// Games whose broadcast listeners are already attached (avoid duplicates without removing the
-// bot driver's listeners).
-const broadcastWired = new WeakSet<LiveGame>()
 
 export function createWsServer(services: AppServices): WebSocketServer {
   const wss = new WebSocketServer({ noServer: true })
   const { matches, repos, config } = services
 
-  function humans(game: LiveGame): PlayerInfo[] {
-    return game.getPlayers().filter(p => !p.isBot)
-  }
-
-  function broadcast(game: LiveGame, msg: object): void {
-    for (const p of humans(game)) registry.send(p.userId, msg)
-  }
-
-  function wireGame(game: LiveGame): void {
-    if (broadcastWired.has(game)) return
-    broadcastWired.add(game)
-
-    game.on('state', state => broadcast(game, { type: 'state', match: state }))
-    game.on('challenged', ({ by, state }) => broadcast(game, { type: 'challenged', by, match: state }))
-    game.on('yourTurn', ({ userId, deadline }) => {
-      const p = game.getPlayer(userId)
-      if (p && !p.isBot) registry.send(userId, { type: 'yourTurn', deadline })
-    })
-    game.on('gameOver', async data => {
-      let definition: string | null = null
-      if (data.word && data.word.length >= 4) {
-        definition = await services.ai.define(data.word, game.language).catch(() => null)
-      }
-      broadcast(game, { type: 'gameOver', ...data, definition })
-      matches.removeGame(game)
-    })
+  const wireGame = (game: LiveGame) => wireGameBroadcast(game, services)
+  const broadcast = (game: LiveGame, msg: object) => {
+    for (const p of game.getPlayers()) if (!p.isBot) registry.send(p.userId, msg)
   }
 
   wss.on('connection', (ws: WebSocket, _req: IncomingMessage) => {
@@ -184,6 +158,13 @@ export function createWsServer(services: AppServices): WebSocketServer {
           await game.applyMove(uid, 'resign', {})
           return
         }
+
+        case 'cancel': {
+          // Back out of a hosting lobby / matchmaking without it lingering.
+          matches.abandonStaleLobby(uid)
+          send({ type: 'cancelled' })
+          return
+        }
       }
     }
 
@@ -196,6 +177,12 @@ export function createWsServer(services: AppServices): WebSocketServer {
 
       const game = matches.getGameByUser(uid)
       if (!game || game.isFinished()) return
+
+      // An unstarted hosting lobby has no opponent waiting — just drop it, no grace period.
+      if (game.getPhase() === 'lobby') {
+        matches.abandonStaleLobby(uid)
+        return
+      }
 
       game.pauseTimer()
       const graceUntil = new Date(Date.now() + config.reconnectGraceMs).toISOString()

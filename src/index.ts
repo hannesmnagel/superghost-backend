@@ -21,6 +21,8 @@ function appConfig(): AppConfigValues {
     openRouterKey: config.OPENROUTER_API_KEY,
     openRouterModel: config.OPENROUTER_MODEL,
     aiTimeoutMs: config.AI_TIMEOUT_MS,
+    openaiKey: config.OPENAI_API_KEY,
+    openaiModerationModel: config.OPENAI_MODERATION_MODEL,
     turnTimeoutMs: config.TURN_TIMEOUT_MS,
     botFillMs: config.BOT_FILL_MS,
     reconnectGraceMs: config.RECONNECT_GRACE_MS,

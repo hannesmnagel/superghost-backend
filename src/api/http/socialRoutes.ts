@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { AppServices } from '../../app.js'
 import { makeRequireAuth, userId, badRequest, forbidden, notFound } from './common.js'
 import { send as wsSend } from '../ws/registry.js'
+import { wireGameBroadcast } from '../ws/broadcast.js'
 
 export function registerSocialRoutes(app: FastifyInstance, services: AppServices): void {
   const requireAuth = makeRequireAuth(services)
@@ -115,9 +116,20 @@ export function registerSocialRoutes(app: FastifyInstance, services: AppServices
     if (!c) throw notFound('Challenge not found')
     if (c.toUserId !== me) throw forbidden('Not your challenge')
     if (c.status !== 'pending') throw badRequest('Challenge not pending')
+
+    // Seat both players into a fresh private match and tell them to start.
+    let game
+    try {
+      game = await services.matches.createChallengeMatch(c.fromUserId, me)
+    } catch (err) {
+      throw badRequest(err instanceof Error ? err.message : 'Could not start match')
+    }
     await challenges.updateStatus(challengeId, 'accepted')
-    wsSend(c.fromUserId, { type: 'challengeAccepted', challengeId, byUserId: me })
-    return { ok: true }
+    wireGameBroadcast(game, services)
+    const ready = { type: 'matchReady', matchId: game.id, match: game.getState() }
+    wsSend(c.fromUserId, ready)
+    wsSend(me, ready)
+    return { ok: true, matchId: game.id }
   })
 
   app.post('/challenges/:challengeId/decline', { preHandler: requireAuth }, async (req) => {
