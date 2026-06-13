@@ -20,6 +20,8 @@ export interface AiService {
   isCompletedWord(sequence: string, lang: Lang): Promise<boolean>
   validateSubmission(word: string, sequence: string, lang: Lang): Promise<boolean>
   define(word: string, lang: Lang): Promise<string | null>
+  /** Judge whether a username is acceptable (fallback for the OpenAI moderation API). */
+  moderateText(text: string): Promise<{ allowed: boolean; reason?: string }>
 }
 
 export interface OpenRouterConfig {
@@ -167,6 +169,20 @@ Respond ONLY with compact JSON, no prose.`
         })
       } catch {
         return false
+      }
+    },
+
+    async moderateText(text) {
+      try {
+        const raw = await chat(
+          'You moderate public usernames for a word game. Respond ONLY with JSON.',
+          `Is "${text}" acceptable as a public username? Reject it if it contains slurs, hate, harassment, sexual content, threats, or self-harm. Respond {"allowed":true|false,"reason":"brief"}.`,
+        )
+        const parsed = parseJson<{ allowed: boolean; reason?: string }>(raw)
+        if (!parsed || typeof parsed.allowed !== 'boolean') return { allowed: true }
+        return { allowed: parsed.allowed, reason: parsed.reason }
+      } catch {
+        return { allowed: true } // fail open
       }
     },
 

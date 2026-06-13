@@ -132,6 +132,18 @@ export function registerSocialRoutes(app: FastifyInstance, services: AppServices
     return { ok: true, matchId: game.id }
   })
 
+  // The sender withdraws a still-pending challenge (e.g. they left the waiting screen).
+  app.post('/challenges/:challengeId/cancel', { preHandler: requireAuth }, async (req) => {
+    const me = userId(req)
+    const { challengeId } = req.params as { challengeId: string }
+    const c = await challenges.findById(challengeId)
+    if (!c) throw notFound('Challenge not found')
+    if (c.fromUserId !== me) throw forbidden('Not your challenge')
+    await challenges.updateStatus(challengeId, 'cancelled')
+    wsSend(c.toUserId, { type: 'challengeWithdrawn', challengeId })
+    return { ok: true }
+  })
+
   app.post('/challenges/:challengeId/decline', { preHandler: requireAuth }, async (req) => {
     const me = userId(req)
     const { challengeId } = req.params as { challengeId: string }

@@ -22,5 +22,9 @@ export function createFakeAiService(rng: () => number = seededRng()): AiService 
     async define(word, lang) {
       return isWordLocal(word, lang) ? `A test definition of ${word}.` : null
     },
+    async moderateText(text) {
+      // Deterministic fake: reject anything containing "bad".
+      return text.toLowerCase().includes('bad') ? { allowed: false, reason: 'test' } : { allowed: true }
+    },
   }
 }

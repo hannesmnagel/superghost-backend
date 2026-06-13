@@ -53,7 +53,11 @@ export function createServices(deps: CreateServicesDeps): AppServices {
       timeoutMs: config.aiTimeoutMs,
     })
   const auth = createAuthService(repos, tokens, deps.appleVerifier)
-  const moderation = createModerationService({ apiKey: config.openaiKey, model: config.openaiModerationModel })
+  const moderation = createModerationService({
+    apiKey: config.openaiKey,
+    model: config.openaiModerationModel,
+    fallback: text => ai.moderateText(text),
+  })
   const matches = new MatchService({
     repos,
     ai,
