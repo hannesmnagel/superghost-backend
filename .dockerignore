@@ -1,2 +1,8 @@
-.build/
-.swiftpm/
+node_modules
+dist
+.env
+*.env
+.git
+*.md
+test
+.DS_Store

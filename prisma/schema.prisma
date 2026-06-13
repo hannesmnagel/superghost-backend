@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  handle     String   @unique
+  skin       String   @default("Skin/Cowboy")
+  rating     Int      @default(1000)
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now()) @updatedAt
+
+  identities    AuthIdentity[]
+  refreshTokens RefreshToken[]
+  devices       Device[]
+
+  friendsA   Friendship[] @relation("FriendA")
+  friendsB   Friendship[] @relation("FriendB")
+  challenges ChallengeFrom[] @relation("ChallengeFrom")
+  challengers ChallengeFrom[] @relation("ChallengeTo")
+  achievements Achievement[]
+
+  @@index([rating(sort: Desc)])
+}
+
+model AuthIdentity {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String
+  subject    String
+  secretHash String?
+  createdAt  DateTime @default(now())
+
+  @@unique([provider, subject])
+  @@index([userId])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Device {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apnsToken  String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Match {
+  id            String    @id @default(uuid())
+  player1Id     String
+  player2Id     String?
+  isBot         Boolean   @default(false)
+  isPrivate     Boolean   @default(false)
+  isSuperghost  Boolean   @default(true)
+  language      String    @default("en")
+  finalWord     String    @default("")
+  winnerId      String?
+  loserId       String?
+  endReason     String?
+  ratingP1Before Int      @default(1000)
+  ratingP2Before Int      @default(1000)
+  ratingP1After  Int      @default(1000)
+  ratingP2After  Int      @default(1000)
+  rematchOfId   String?
+  createdAt     DateTime  @default(now())
+  finishedAt    DateTime?
+
+  moves         Move[]
+
+  @@index([player1Id])
+  @@index([player2Id])
+  @@index([createdAt(sort: Desc)])
+}
+
+model Move {
+  id        String   @id @default(uuid())
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  ply       Int
+  byUserId  String
+  action    String
+  letter    String?
+  wordAfter String
+  createdAt DateTime @default(now())
+
+  @@index([matchId])
+}
+
+model Friendship {
+  id        String   @id @default(uuid())
+  aId       String
+  bId       String
+  a         User     @relation("FriendA", fields: [aId], references: [id], onDelete: Cascade)
+  b         User     @relation("FriendB", fields: [bId], references: [id], onDelete: Cascade)
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+
+  @@unique([aId, bId])
+  @@index([aId])
+  @@index([bId])
+}
+
+model ChallengeFrom {
+  id         String   @id @default(uuid())
+  fromUserId String
+  toUserId   String
+  from       User     @relation("ChallengeFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to         User     @relation("ChallengeTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  matchId    String?
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([toUserId])
+  @@index([fromUserId])
+}
+
+model Achievement {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key        String
+  progress   Float     @default(0)
+  unlockedAt DateTime?
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+model WordVerdict {
+  word      String
+  language  String
+  valid     Boolean
+  reason    String  @default("")
+  createdAt DateTime @default(now())
+
+  @@id([word, language])
+}

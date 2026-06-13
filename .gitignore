@@ -1,12 +1,8 @@
-Packages
-.build
-xcuserdata
-*.xcodeproj
-DerivedData/
-.DS_Store
-db.sqlite
-.swiftpm
+node_modules/
+dist/
 .env
-.env.*
-! .env.example
-.vscode
+*.env
+data/en.txt
+data/de.txt
+*.log
+.DS_Store
