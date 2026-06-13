@@ -264,6 +264,7 @@ export class MatchService {
     this.attach(game, p2)
     game.addPlayer(p1)
     game.addPlayer(p2)
+    this.wireBots(game) // no-op for two humans; drives the bot if one side is a persona
     return game
   }
 

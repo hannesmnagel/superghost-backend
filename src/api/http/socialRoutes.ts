@@ -71,6 +71,14 @@ export function registerSocialRoutes(app: FastifyInstance, services: AppServices
     const existing = await friends.find(a, b)
     if (existing) return { friendshipId: existing.id, status: existing.status }
     const f = await friends.create(a, b)
+
+    // Bots accept instantly (they have no client to confirm) — keeps them indistinguishable.
+    const target = await users.findById(toUserId)
+    if (target?.isBot) {
+      await friends.updateStatus(f.id, 'accepted')
+      return { friendshipId: f.id, status: 'accepted' }
+    }
+
     wsSend(toUserId, { type: 'friendRequest', fromUserId: me, friendshipId: f.id })
     const sender = await users.findById(me)
     void services.apns.sendToUser(toUserId, {
@@ -106,6 +114,16 @@ export function registerSocialRoutes(app: FastifyInstance, services: AppServices
   app.post('/challenges', { preHandler: requireAuth }, async (req) => {
     const me = userId(req)
     const { toUserId } = z.object({ toUserId: z.string() }).parse(req.body)
+
+    // Challenging a bot starts the match immediately (no accept step needed).
+    const target = await users.findById(toUserId)
+    if (target?.isBot) {
+      const game = await services.matches.createChallengeMatch(me, toUserId)
+      wireGameBroadcast(game, services)
+      wsSend(me, { type: 'matchReady', matchId: game.id, match: game.getState() })
+      return { started: true, matchId: game.id }
+    }
+
     const c = await challenges.create(me, toUserId, new Date(Date.now() + 48 * 3600_000))
     wsSend(toUserId, { type: 'challengeReceived', challengeId: c.id, fromUserId: me })
     const challenger = await users.findById(me)
