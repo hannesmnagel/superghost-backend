@@ -63,7 +63,20 @@ async function main(): Promise<void> {
     }
   })
 
+  // Apple App Site Association — lets the iOS app claim https invite links (universal links).
+  const AASA = JSON.stringify({
+    applinks: {
+      apps: [],
+      details: [{ appID: 'X5933694SW.com.nagel.superghost', paths: ['/i/*'] }],
+    },
+  })
+
   httpServer.on('request', (req, res) => {
+    if (req.url === '/.well-known/apple-app-site-association' || req.url === '/apple-app-site-association') {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(AASA)
+      return
+    }
     if (req.url?.startsWith('/i/')) {
       try {
         const html = readFileSync(join(__dirname, '../Public/join.html'), 'utf8')
