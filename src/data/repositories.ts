@@ -110,6 +110,8 @@ export interface AuthRepository {
   revokeRefreshTokenById(id: string): Promise<void>
   revokeRefreshTokenByHash(tokenHash: string): Promise<void>
   upsertDevice(userId: string, apnsToken: string): Promise<void>
+  devicesForUser(userId: string): Promise<string[]>
+  deleteDevice(apnsToken: string): Promise<void>
 }
 
 export interface MatchRepository {

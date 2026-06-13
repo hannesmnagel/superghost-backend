@@ -12,6 +12,11 @@ const schema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODERATION_MODEL: z.string().default('omni-moderation-latest'),
   APPLE_BUNDLE_ID: z.string().default('com.nagel.superghost'),
+  // APNs (token-based auth). APNS_KEY_P8_BASE64 is the .p8 PEM, base64-encoded.
+  APNS_KEY_P8_BASE64: z.string().optional(),
+  APNS_KEY_ID: z.string().optional(),
+  APNS_TEAM_ID: z.string().optional(),
+  APNS_HOST: z.string().default('api.push.apple.com'),
   BOT_FILL_MS: z.coerce.number().default(5000),
   TURN_TIMEOUT_MS: z.coerce.number().default(30000),
   RECONNECT_GRACE_MS: z.coerce.number().default(60000),

@@ -3,6 +3,7 @@ import { createTokenService, type TokenService } from './services/tokens.js'
 import { createAuthService, type AuthService, type AppleVerifier } from './services/auth.js'
 import { createOpenRouterAiService, type AiService } from './services/ai.js'
 import { createModerationService, type ModerationService } from './services/moderation.js'
+import { createApnsService, type ApnsService } from './services/apns.js'
 import { MatchService } from './services/match.js'
 
 export interface AppConfigValues {
@@ -14,6 +15,11 @@ export interface AppConfigValues {
   aiTimeoutMs: number
   openaiKey?: string
   openaiModerationModel: string
+  apnsKeyP8?: string
+  apnsKeyId?: string
+  apnsTeamId?: string
+  apnsHost: string
+  apnsBundleId: string
   turnTimeoutMs: number
   botFillMs: number
   reconnectGraceMs: number
@@ -25,6 +31,7 @@ export interface AppServices {
   auth: AuthService
   ai: AiService
   moderation: ModerationService
+  apns: ApnsService
   matches: MatchService
   config: AppConfigValues
 }
@@ -58,10 +65,17 @@ export function createServices(deps: CreateServicesDeps): AppServices {
     model: config.openaiModerationModel,
     fallback: text => ai.moderateText(text),
   })
+  const apns = createApnsService(repos.auth, {
+    keyP8: config.apnsKeyP8,
+    keyId: config.apnsKeyId,
+    teamId: config.apnsTeamId,
+    bundleId: config.apnsBundleId,
+    host: config.apnsHost,
+  })
   const matches = new MatchService({
     repos,
     ai,
     config: { turnTimeoutMs: config.turnTimeoutMs, botFillMs: config.botFillMs },
   })
-  return { repos, tokens, auth, ai, moderation, matches, config }
+  return { repos, tokens, auth, ai, moderation, apns, matches, config }
 }

@@ -72,6 +72,12 @@ export function registerSocialRoutes(app: FastifyInstance, services: AppServices
     if (existing) return { friendshipId: existing.id, status: existing.status }
     const f = await friends.create(a, b)
     wsSend(toUserId, { type: 'friendRequest', fromUserId: me, friendshipId: f.id })
+    const sender = await users.findById(me)
+    void services.apns.sendToUser(toUserId, {
+      title: 'New friend request',
+      body: `${sender?.handle ?? 'Someone'} wants to be friends`,
+      data: { kind: 'friendRequest', fromUserId: me },
+    })
     return { friendshipId: f.id, status: 'pending' }
   })
 
@@ -102,6 +108,12 @@ export function registerSocialRoutes(app: FastifyInstance, services: AppServices
     const { toUserId } = z.object({ toUserId: z.string() }).parse(req.body)
     const c = await challenges.create(me, toUserId, new Date(Date.now() + 48 * 3600_000))
     wsSend(toUserId, { type: 'challengeReceived', challengeId: c.id, fromUserId: me })
+    const challenger = await users.findById(me)
+    void services.apns.sendToUser(toUserId, {
+      title: 'Game challenge',
+      body: `${challenger?.handle ?? 'Someone'} challenged you to a game`,
+      data: { kind: 'challenge', challengeId: c.id, fromUserId: me },
+    })
     return { challengeId: c.id }
   })
 

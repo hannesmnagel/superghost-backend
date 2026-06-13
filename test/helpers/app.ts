@@ -20,6 +20,8 @@ export function testConfig(over: Partial<AppConfigValues> = {}): AppConfigValues
     openRouterModel: 'test-model',
     aiTimeoutMs: 1000,
     openaiModerationModel: 'test-moderation',
+    apnsHost: 'api.push.apple.com',
+    apnsBundleId: 'com.nagel.superghost',
     turnTimeoutMs: 5000,
     botFillMs: 20,
     reconnectGraceMs: 200,

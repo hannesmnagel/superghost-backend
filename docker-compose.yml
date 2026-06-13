@@ -27,6 +27,10 @@ services:
       AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-12000}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_MODERATION_MODEL: ${OPENAI_MODERATION_MODEL:-omni-moderation-latest}
+      APNS_KEY_P8_BASE64: ${APNS_KEY_P8_BASE64}
+      APNS_KEY_ID: ${APNS_KEY_ID}
+      APNS_TEAM_ID: ${APNS_TEAM_ID}
+      APNS_HOST: ${APNS_HOST:-api.push.apple.com}
       APPLE_BUNDLE_ID: ${APPLE_BUNDLE_ID:-com.nagel.superghost}
       BOT_FILL_MS: ${BOT_FILL_MS:-5000}
       TURN_TIMEOUT_MS: ${TURN_TIMEOUT_MS:-30000}

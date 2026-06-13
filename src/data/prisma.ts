@@ -140,6 +140,13 @@ export function createPrismaRepositories(db: PrismaClient): Repositories {
       async upsertDevice(userId, apnsToken) {
         await db.device.upsert({ where: { apnsToken }, create: { userId, apnsToken }, update: { userId } })
       },
+      async devicesForUser(userId) {
+        const ds = await db.device.findMany({ where: { userId }, select: { apnsToken: true } })
+        return ds.map(d => d.apnsToken)
+      },
+      async deleteDevice(apnsToken) {
+        await db.device.delete({ where: { apnsToken } }).catch(() => {})
+      },
     },
 
     matches: {

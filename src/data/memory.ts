@@ -146,6 +146,12 @@ export function createMemoryRepositories(): Repositories & { _reset(): void } {
       async upsertDevice(userId, apnsToken) {
         devices.set(apnsToken, userId)
       },
+      async devicesForUser(userId) {
+        return [...devices.entries()].filter(([, uid]) => uid === userId).map(([token]) => token)
+      },
+      async deleteDevice(apnsToken) {
+        devices.delete(apnsToken)
+      },
     },
 
     matches: {
