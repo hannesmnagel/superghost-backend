@@ -1,21 +1,10 @@
-x-shared_environment: &shared_environment
-  NODE_ENV: production
-  DATABASE_URL: ${DATABASE_URL}
-  JWT_SECRET: ${JWT_SECRET}
-  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-  OPENROUTER_MODEL: ${OPENROUTER_MODEL:-tencent/hy3-preview}
-  APPLE_BUNDLE_ID: ${APPLE_BUNDLE_ID:-com.nagel.superghost}
-  BOT_FILL_MS: ${BOT_FILL_MS:-5000}
-  TURN_TIMEOUT_MS: ${TURN_TIMEOUT_MS:-30000}
-  RECONNECT_GRACE_MS: ${RECONNECT_GRACE_MS:-60000}
-
 services:
   db:
     image: postgres:16-alpine
     volumes:
       - db_data:/var/lib/postgresql/data/pgdata
     environment:
-      PGDATA: /var/lib/postgresql/data/pgdata
+      PGDATA: ${PGDATA}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -25,13 +14,21 @@ services:
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       interval: 5s
-      retries: 5
+      retries: 20
       timeout: 3s
 
-  app:
+  web:
     image: ghcr.io/hannesmnagel/superghost-backend:latest
     environment:
-      <<: *shared_environment
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-tencent/hy3-preview}
+      APPLE_BUNDLE_ID: ${APPLE_BUNDLE_ID:-com.nagel.superghost}
+      BOT_FILL_MS: ${BOT_FILL_MS:-5000}
+      TURN_TIMEOUT_MS: ${TURN_TIMEOUT_MS:-30000}
+      RECONNECT_GRACE_MS: ${RECONNECT_GRACE_MS:-60000}
     depends_on:
       db:
         condition: service_healthy
