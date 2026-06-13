@@ -185,9 +185,11 @@ export class MatchService {
     const game = this.newGame({ isSuperghost, language: lang })
     this.attach(game, player)
     this.attach(game, bot)
-    this.wireBots(game)
     game.addPlayer(player)
     game.addPlayer(bot)
+    // Wire AFTER players are added: wireBots guards on the roster containing a bot, and its
+    // initial maybeRunBot must see the started game.
+    this.wireBots(game)
     resolve(game)
   }
 

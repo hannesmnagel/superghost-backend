@@ -13,7 +13,7 @@ const schema = z.object({
   BOT_FILL_MS: z.coerce.number().default(5000),
   TURN_TIMEOUT_MS: z.coerce.number().default(30000),
   RECONNECT_GRACE_MS: z.coerce.number().default(60000),
-  AI_TIMEOUT_MS: z.coerce.number().default(4000),
+  AI_TIMEOUT_MS: z.coerce.number().default(12000),
 })
 
 export type AppConfig = z.infer<typeof schema>

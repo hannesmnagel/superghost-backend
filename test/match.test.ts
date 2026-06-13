@@ -20,6 +20,15 @@ function onceEvent<T = any>(game: LiveGame, name: string): Promise<T> {
   return new Promise(resolve => game.once(name, resolve))
 }
 
+async function waitFor(cond: () => boolean, ms = 1500): Promise<void> {
+  const start = Date.now()
+  while (Date.now() - start < ms) {
+    if (cond()) return
+    await new Promise(r => setTimeout(r, 10))
+  }
+  throw new Error('waitFor timed out')
+}
+
 let repos: Repositories & { _reset(): void }
 let svc: MatchService
 
@@ -76,6 +85,18 @@ describe('bots participate in rating (leaderboard)', () => {
     expect(matches).toHaveLength(1)
     expect(matches[0]!.isBot).toBe(true)
     expect(matches[0]!.player2Id).toBe(bot.userId)
+  })
+
+  it('the bot actually responds with a move after the human plays (regression)', async () => {
+    const human = await repos.users.create({ handle: 'dave', rating: 1000 })
+    const game = await svc.quickmatch(userToPlayer(human), false, 'en')
+    expect(game.currentTurnUserId()).toBe(human.id)
+
+    await game.applyMove(human.id, 'append', { letter: 's' })
+    // Bot driver must pick up the turn and extend the sequence (or end the game) on its own.
+    await waitFor(() => game.getState().word.length >= 2 || game.isFinished())
+
+    expect(game.getState().word.length).toBeGreaterThanOrEqual(2)
   })
 
   it('bots appear in the global leaderboard ordering', async () => {

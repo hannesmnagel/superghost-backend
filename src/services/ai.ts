@@ -74,13 +74,20 @@ export function createOpenRouterAiService(words: WordVerdictRepository, cfg: Ope
             { role: 'system', content: system },
             { role: 'user', content: user },
           ],
-          max_tokens: 120,
+          // `tencent/hy3-preview` is a reasoning model: leave reasoning on and it returns the
+          // answer in `reasoning` with `content` null (and burns the token budget before emitting
+          // content). Disable it so `content` is produced directly and fast.
+          reasoning: { enabled: false },
+          max_tokens: 200,
           temperature: 0.4,
         }),
         signal: controller.signal,
       })
-      const data = (await res.json()) as { choices?: Array<{ message: { content: string } }> }
-      return data.choices?.[0]?.message?.content?.trim() ?? ''
+      const data = (await res.json()) as {
+        choices?: Array<{ message: { content: string | null; reasoning?: string | null } }>
+      }
+      const message = data.choices?.[0]?.message
+      return (message?.content ?? message?.reasoning ?? '').trim()
     } finally {
       clearTimeout(timer)
     }
