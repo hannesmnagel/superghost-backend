@@ -12,6 +12,8 @@ model User {
   handle     String   @unique
   skin       String   @default("Skin/Cowboy")
   rating     Int      @default(1000)
+  isBot      Boolean  @default(false)
+  botLevel   String?
   createdAt  DateTime @default(now())
   lastSeenAt DateTime @default(now()) @updatedAt
 
@@ -26,6 +28,7 @@ model User {
   achievements Achievement[]
 
   @@index([rating(sort: Desc)])
+  @@index([isBot])
 }
 
 model AuthIdentity {

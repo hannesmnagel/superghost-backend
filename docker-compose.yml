@@ -17,7 +17,7 @@ services:
       retries: 20
       timeout: 3s
 
-  web:
+  app:
     image: ghcr.io/hannesmnagel/superghost-backend:latest
     environment:
       NODE_ENV: production
@@ -25,6 +25,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-tencent/hy3-preview}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-4000}
       APPLE_BUNDLE_ID: ${APPLE_BUNDLE_ID:-com.nagel.superghost}
       BOT_FILL_MS: ${BOT_FILL_MS:-5000}
       TURN_TIMEOUT_MS: ${TURN_TIMEOUT_MS:-30000}

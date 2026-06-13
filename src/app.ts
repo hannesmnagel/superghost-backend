@@ -1,0 +1,58 @@
+import type { Repositories } from './data/repositories.js'
+import { createTokenService, type TokenService } from './services/tokens.js'
+import { createAuthService, type AuthService, type AppleVerifier } from './services/auth.js'
+import { createOpenRouterAiService, type AiService } from './services/ai.js'
+import { MatchService } from './services/match.js'
+
+export interface AppConfigValues {
+  jwtSecret: string
+  accessExpiresIn: string
+  refreshExpiresDays: number
+  openRouterKey?: string
+  openRouterModel: string
+  aiTimeoutMs: number
+  turnTimeoutMs: number
+  botFillMs: number
+  reconnectGraceMs: number
+}
+
+export interface AppServices {
+  repos: Repositories
+  tokens: TokenService
+  auth: AuthService
+  ai: AiService
+  matches: MatchService
+  config: AppConfigValues
+}
+
+export interface CreateServicesDeps {
+  repos: Repositories
+  appleVerifier: AppleVerifier
+  config: AppConfigValues
+  /** Allow tests to inject a fake AiService instead of OpenRouter. */
+  ai?: AiService
+}
+
+/** Wire repositories → services. The single composition point used by both prod and tests. */
+export function createServices(deps: CreateServicesDeps): AppServices {
+  const { repos, config } = deps
+  const tokens = createTokenService(repos.auth, {
+    jwtSecret: config.jwtSecret,
+    accessExpiresIn: config.accessExpiresIn,
+    refreshExpiresDays: config.refreshExpiresDays,
+  })
+  const ai =
+    deps.ai ??
+    createOpenRouterAiService(repos.words, {
+      apiKey: config.openRouterKey,
+      model: config.openRouterModel,
+      timeoutMs: config.aiTimeoutMs,
+    })
+  const auth = createAuthService(repos, tokens, deps.appleVerifier)
+  const matches = new MatchService({
+    repos,
+    ai,
+    config: { turnTimeoutMs: config.turnTimeoutMs, botFillMs: config.botFillMs },
+  })
+  return { repos, tokens, auth, ai, matches, config }
+}

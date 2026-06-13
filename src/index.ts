@@ -1,68 +1,87 @@
 import { createServer } from 'http'
-import { createHttpServer } from './http/server.js'
-import { createWsServer } from './ws/wsServer.js'
-import { loadAll } from './words/wordService.js'
-import { db } from './db/prisma.js'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 import { config } from './config.js'
+import { db } from './db/prisma.js'
+import { createPrismaRepositories } from './data/prisma.js'
+import { createServices, type AppConfigValues } from './app.js'
+import { createAppleVerifier } from './services/apple.js'
+import { seedBots } from './services/botSeed.js'
+import { createHttpServer } from './api/http/index.js'
+import { createWsServer } from './api/ws/server.js'
 
-async function main() {
-  console.log('[boot] Loading word lists...')
-  loadAll()
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
+function appConfig(): AppConfigValues {
+  return {
+    jwtSecret: config.JWT_SECRET,
+    accessExpiresIn: config.JWT_ACCESS_EXPIRES_IN,
+    refreshExpiresDays: config.JWT_REFRESH_EXPIRES_DAYS,
+    openRouterKey: config.OPENROUTER_API_KEY,
+    openRouterModel: config.OPENROUTER_MODEL,
+    aiTimeoutMs: config.AI_TIMEOUT_MS,
+    turnTimeoutMs: config.TURN_TIMEOUT_MS,
+    botFillMs: config.BOT_FILL_MS,
+    reconnectGraceMs: config.RECONNECT_GRACE_MS,
+  }
+}
+
+async function main(): Promise<void> {
   console.log('[boot] Connecting to database...')
   await db.$connect()
 
-  console.log('[boot] Starting HTTP server...')
-  const fastify = await createHttpServer()
-  const wss = createWsServer()
+  const repos = createPrismaRepositories(db)
 
-  // Share one HTTP server between Fastify and ws
+  console.log('[boot] Seeding bot personas...')
+  await seedBots(repos)
+
+  const services = createServices({
+    repos,
+    appleVerifier: createAppleVerifier(config.APPLE_BUNDLE_ID),
+    config: appConfig(),
+  })
+  if (!config.OPENROUTER_API_KEY) {
+    console.warn('[boot] OPENROUTER_API_KEY not set — bots and word checks will use degraded fallbacks.')
+  }
+
+  console.log('[boot] Starting HTTP + WebSocket server...')
+  const fastify = await createHttpServer(services, {
+    logLevel: config.NODE_ENV === 'production' ? 'info' : 'debug',
+  })
+  const wss = createWsServer(services)
+
   const httpServer = createServer()
-
-  // Fastify handles all HTTP
   fastify.server = httpServer as any
   await fastify.ready()
 
-  // WebSocket upgrade
   httpServer.on('upgrade', (req, socket, head) => {
     if (req.url?.startsWith('/ws')) {
-      wss.handleUpgrade(req, socket, head, ws => {
-        wss.emit('connection', ws, req)
-      })
+      wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req))
     } else {
       socket.destroy()
     }
   })
 
-  // Serve invite deep-link pages
   httpServer.on('request', (req, res) => {
     if (req.url?.startsWith('/i/')) {
-      // Serve join.html for invite codes
-      import('fs').then(({ readFileSync }) => {
-        import('path').then(({ join, dirname }) => {
-          import('url').then(({ fileURLToPath }) => {
-            const __dirname = dirname(fileURLToPath(import.meta.url))
-            const html = readFileSync(join(__dirname, '../Public/join.html'), 'utf8')
-            res.writeHead(200, { 'Content-Type': 'text/html' })
-            res.end(html)
-          })
-        })
-      }).catch(() => {
+      try {
+        const html = readFileSync(join(__dirname, '../Public/join.html'), 'utf8')
+        res.writeHead(200, { 'Content-Type': 'text/html' })
+        res.end(html)
+      } catch {
         res.writeHead(404)
         res.end()
-      })
+      }
       return
     }
-    // Everything else goes through Fastify
     fastify.routing(req as any, res as any)
   })
 
   httpServer.listen(config.PORT, '0.0.0.0', () => {
-    console.log(`[boot] Superghost backend v2 listening on :${config.PORT}`)
-    console.log(`[boot] Environment: ${config.NODE_ENV}`)
+    console.log(`[boot] Superghost backend v2 listening on :${config.PORT} (${config.NODE_ENV})`)
   })
 
-  // Graceful shutdown
   for (const sig of ['SIGTERM', 'SIGINT']) {
     process.on(sig, async () => {
       console.log(`[shutdown] ${sig} received`)

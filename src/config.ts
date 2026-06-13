@@ -13,15 +13,19 @@ const schema = z.object({
   BOT_FILL_MS: z.coerce.number().default(5000),
   TURN_TIMEOUT_MS: z.coerce.number().default(30000),
   RECONNECT_GRACE_MS: z.coerce.number().default(60000),
+  AI_TIMEOUT_MS: z.coerce.number().default(4000),
 })
 
-function parseConfig() {
+export type AppConfig = z.infer<typeof schema>
+
+function parseConfig(): AppConfig {
   const result = schema.safeParse(process.env)
   if (!result.success) {
-    console.error('Invalid environment configuration:')
-    for (const issue of result.error.issues) {
-      console.error(`  ${issue.path.join('.')}: ${issue.message}`)
-    }
+    const lines = result.error.issues.map(i => `  ${i.path.join('.')}: ${i.message}`)
+    const message = `Invalid environment configuration:\n${lines.join('\n')}`
+    // In tests we throw (catchable) instead of killing the runner; in real runs we exit.
+    if (process.env.NODE_ENV === 'test') throw new Error(message)
+    console.error(message)
     process.exit(1)
   }
   return result.data

@@ -2,7 +2,5 @@ node_modules/
 dist/
 .env
 *.env
-data/en.txt
-data/de.txt
 *.log
 .DS_Store
