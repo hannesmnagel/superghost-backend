@@ -248,13 +248,13 @@ export function createPrismaRepositories(db: PrismaClient): Repositories {
     words: {
       async find(word, language) {
         const v = await db.wordVerdict.findUnique({ where: { word_language: { word, language } } })
-        return v ? { valid: v.valid } : null
+        return v ? { valid: v.valid, definition: v.definition ?? null } : null
       },
-      async upsert(word, language, valid, reason) {
+      async upsert(word, language, valid, reason, definition) {
         await db.wordVerdict.upsert({
           where: { word_language: { word, language } },
-          create: { word, language, valid, reason },
-          update: { valid, reason },
+          create: { word, language, valid, reason, definition: definition ?? null },
+          update: { valid, reason, definition: definition ?? null },
         })
       },
     },

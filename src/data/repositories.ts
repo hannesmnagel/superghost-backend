@@ -142,8 +142,8 @@ export interface AchievementRepository {
 }
 
 export interface WordVerdictRepository {
-  find(word: string, language: string): Promise<{ valid: boolean } | null>
-  upsert(word: string, language: string, valid: boolean, reason: string): Promise<void>
+  find(word: string, language: string): Promise<{ valid: boolean; definition: string | null } | null>
+  upsert(word: string, language: string, valid: boolean, reason: string, definition?: string | null): Promise<void>
 }
 
 export interface Repositories {

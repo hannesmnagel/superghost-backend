@@ -150,11 +150,12 @@ model Achievement {
 }
 
 model WordVerdict {
-  word      String
-  language  String
-  valid     Boolean
-  reason    String  @default("")
-  createdAt DateTime @default(now())
+  word       String
+  language   String
+  valid      Boolean
+  reason     String   @default("")
+  definition String?
+  createdAt  DateTime @default(now())
 
   @@id([word, language])
 }

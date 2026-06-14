@@ -29,7 +29,7 @@ export function createMemoryRepositories(): Repositories & { _reset(): void } {
   const friendships: FriendshipRecord[] = []
   const challenges: ChallengeRecord[] = []
   const achievements: AchievementRecord[] = []
-  const verdicts = new Map<string, { valid: boolean }>()
+  const verdicts = new Map<string, { valid: boolean; definition: string | null }>()
 
   const clone = <T>(v: T): T => ({ ...v }) as T
 
@@ -235,10 +235,10 @@ export function createMemoryRepositories(): Repositories & { _reset(): void } {
     words: {
       async find(word, language) {
         const v = verdicts.get(`${word}|${language}`)
-        return v ? { valid: v.valid } : null
+        return v ? { valid: v.valid, definition: v.definition } : null
       },
-      async upsert(word, language, valid) {
-        verdicts.set(`${word}|${language}`, { valid })
+      async upsert(word, language, valid, _reason, definition) {
+        verdicts.set(`${word}|${language}`, { valid, definition: definition ?? null })
       },
     },
   }

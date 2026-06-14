@@ -105,12 +105,28 @@ export function createOpenRouterAiService(words: WordVerdictRepository, cfg: Ope
     }
   }
 
-  async function cachedValidity(key: string, lang: Lang, compute: () => Promise<{ valid: boolean; reason: string }>): Promise<boolean> {
-    const cached = await words.find(key, lang)
-    if (cached) return cached.valid
-    const result = await compute()
-    await words.upsert(key, lang, result.valid, result.reason).catch(() => {})
-    return result.valid
+  // One judgement decides validity AND definition together, cached, so they never disagree
+  // (the old split between a yes/no check and a separate dictionary lookup could conflict).
+  async function judgeWord(word: string, lang: Lang): Promise<{ valid: boolean; definition: string | null }> {
+    const w = word.toLowerCase()
+    const cached = await words.find(w, lang)
+    if (cached) return { valid: cached.valid, definition: cached.definition }
+
+    let result: { valid: boolean; definition: string | null } = { valid: false, definition: null }
+    try {
+      const raw = await chat(
+        `You judge ${langName(lang)} words. Respond ONLY with JSON.`,
+        `Is "${w}" a complete, valid ${langName(lang)} dictionary word (not a proper noun or abbreviation)? If yes, also give a one-sentence definition. Respond {"valid":true|false,"definition":"..."|null}.`,
+      )
+      const parsed = parseJson<{ valid: boolean; definition?: string | null }>(raw)
+      if (parsed && typeof parsed.valid === 'boolean') {
+        result = { valid: parsed.valid, definition: parsed.valid ? parsed.definition ?? null : null }
+      }
+    } catch {
+      return { valid: false, definition: null } // don't cache on transient error
+    }
+    await words.upsert(w, lang, result.valid, '', result.definition).catch(() => {})
+    return result
   }
 
   return {
@@ -143,33 +159,13 @@ Respond ONLY with compact JSON, no prose.`
 
     async isCompletedWord(sequence, lang) {
       if (sequence.length < 4) return false
-      try {
-        return await cachedValidity(sequence.toLowerCase(), lang, async () => {
-          const raw = await chat(
-            `You judge ${langName(lang)} words. Respond ONLY with JSON.`,
-            `Is "${sequence}" a complete, valid ${langName(lang)} dictionary word (not a proper noun or abbreviation)? Respond {"valid":true|false,"reason":"brief"}.`,
-          )
-          return parseJson<{ valid: boolean; reason: string }>(raw) ?? { valid: false, reason: 'unparseable' }
-        })
-      } catch {
-        return false // fail open: move stands, opponent can challenge
-      }
+      return (await judgeWord(sequence, lang)).valid
     },
 
     async validateSubmission(word, sequence, lang) {
       const w = word.toLowerCase()
       if (w.length < 4 || !w.includes(sequence.toLowerCase())) return false
-      try {
-        return await cachedValidity(w, lang, async () => {
-          const raw = await chat(
-            `You judge ${langName(lang)} words. Respond ONLY with JSON.`,
-            `Is "${w}" a complete, valid ${langName(lang)} dictionary word (not a proper noun or abbreviation)? Respond {"valid":true|false,"reason":"brief"}.`,
-          )
-          return parseJson<{ valid: boolean; reason: string }>(raw) ?? { valid: false, reason: 'unparseable' }
-        })
-      } catch {
-        return false
-      }
+      return (await judgeWord(w, lang)).valid
     },
 
     async moderateText(text) {
@@ -187,16 +183,9 @@ Respond ONLY with compact JSON, no prose.`
     },
 
     async define(word, lang) {
-      try {
-        const raw = await chat(
-          `You are a concise ${langName(lang)} dictionary. Respond ONLY with JSON.`,
-          `Define "${word}" in one short sentence. Respond {"definition":"..."} or {"definition":null} if it is not a real word.`,
-        )
-        const parsed = parseJson<{ definition: string | null }>(raw)
-        return parsed?.definition ?? null
-      } catch {
-        return null
-      }
+      if (word.length < 4) return null
+      // Same cached judgement that the game uses → the definition always matches the verdict.
+      return (await judgeWord(word, lang)).definition
     },
   }
 }

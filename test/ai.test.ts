@@ -95,10 +95,18 @@ describe('AiService (OpenRouter) — word judgement', () => {
     expect(await ai.validateSubmission('sword', 'wor', 'en')).toBe(false)
   })
 
-  it('returns a definition', async () => {
-    const { fn } = fakeFetch('{"definition":"a unit of language"}')
+  it('returns a definition from the same judgement', async () => {
+    const { fn } = fakeFetch('{"valid":true,"definition":"a unit of language"}')
     const ai = createOpenRouterAiService(repos.words, { apiKey: 'k', model: 'm', timeoutMs: 1000, fetchImpl: fn })
     expect(await ai.define('word', 'en')).toBe('a unit of language')
+  })
+
+  it('definition is consistent with the validity verdict (one cached judgement)', async () => {
+    const { fn, calls } = fakeFetch('{"valid":true,"definition":"a ghostly being"}')
+    const ai = createOpenRouterAiService(repos.words, { apiKey: 'k', model: 'm', timeoutMs: 1000, fetchImpl: fn })
+    expect(await ai.isCompletedWord('ghost', 'en')).toBe(true)
+    expect(await ai.define('ghost', 'en')).toBe('a ghostly being') // served from the same cache
+    expect(calls.length).toBe(1)
   })
 
   it('degrades gracefully with no API key', async () => {
