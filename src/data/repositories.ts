@@ -61,6 +61,10 @@ export interface MatchRecord {
   winnerId: string | null
   loserId: string | null
   endReason: string | null
+  ratingP1Before: number
+  ratingP1After: number
+  ratingP2Before: number
+  ratingP2After: number
   finishedAt: Date | null
 }
 

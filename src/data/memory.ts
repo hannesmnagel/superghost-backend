@@ -259,6 +259,10 @@ export function createMemoryRepositories(): Repositories & { _reset(): void } {
       winnerId: m.winnerId,
       loserId: m.loserId,
       endReason: m.endReason,
+      ratingP1Before: m.ratingP1Before,
+      ratingP1After: m.ratingP1After,
+      ratingP2Before: m.ratingP2Before,
+      ratingP2After: m.ratingP2After,
       finishedAt: m.finishedAt,
     }
   }

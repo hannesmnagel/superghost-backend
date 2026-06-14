@@ -22,6 +22,8 @@ export function registerSocialRoutes(app: FastifyInstance, services: AppServices
     return list.map(m => {
       const oppId = m.player1Id === me ? m.player2Id : m.player1Id
       const opp = oppId ? byId.get(oppId) : null
+      const isP1 = m.player1Id === me
+      const ratingDelta = (isP1 ? m.ratingP1After - m.ratingP1Before : m.ratingP2After - m.ratingP2Before)
       return {
         matchId: m.id,
         isBot: m.isBot,
@@ -29,6 +31,7 @@ export function registerSocialRoutes(app: FastifyInstance, services: AppServices
         language: m.language,
         word: m.finalWord,
         won: m.winnerId === me,
+        ratingDelta,
         endReason: m.endReason,
         finishedAt: m.finishedAt,
         opponent: opp ? { userId: opp.id, handle: opp.handle, skin: opp.skin, rating: opp.rating, isBot: opp.isBot } : null,

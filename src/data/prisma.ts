@@ -36,6 +36,10 @@ function toMatch(m: any): MatchRecord {
     winnerId: m.winnerId ?? null,
     loserId: m.loserId ?? null,
     endReason: m.endReason ?? null,
+    ratingP1Before: m.ratingP1Before,
+    ratingP1After: m.ratingP1After,
+    ratingP2Before: m.ratingP2Before,
+    ratingP2After: m.ratingP2After,
     finishedAt: m.finishedAt ?? null,
   }
 }

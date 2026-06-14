@@ -183,9 +183,25 @@ Respond ONLY with compact JSON, no prose.`
     },
 
     async define(word, lang) {
-      if (word.length < 4) return null
-      // Same cached judgement that the game uses → the definition always matches the verdict.
-      return (await judgeWord(word, lang)).definition
+      const w = word.toLowerCase()
+      if (w.length < 4) return null
+      // Same cached judgement the game uses → the definition always matches the verdict.
+      const verdict = await judgeWord(w, lang)
+      if (!verdict.valid) return null
+      if (verdict.definition) return verdict.definition
+      // Valid but no cached definition (older row / model omitted it) → generate once + persist.
+      let definition: string | null = null
+      try {
+        const raw = await chat(
+          `You are a concise ${langName(lang)} dictionary. Respond ONLY with JSON.`,
+          `Define "${w}" in one short sentence. Respond {"definition":"..."}.`,
+        )
+        definition = parseJson<{ definition: string | null }>(raw)?.definition ?? null
+      } catch {
+        definition = null
+      }
+      if (definition) await words.upsert(w, lang, true, '', definition).catch(() => {})
+      return definition
     },
   }
 }
