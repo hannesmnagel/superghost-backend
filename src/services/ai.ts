@@ -115,8 +115,8 @@ export function createOpenRouterAiService(words: WordVerdictRepository, cfg: Ope
     let result: { valid: boolean; definition: string | null } = { valid: false, definition: null }
     try {
       const raw = await chat(
-        `You judge ${langName(lang)} words. Respond ONLY with JSON.`,
-        `Is "${w}" a complete, valid ${langName(lang)} dictionary word (not a proper noun or abbreviation)? If yes, also give a one-sentence definition. Respond {"valid":true|false,"definition":"..."|null}.`,
+        `You judge ${langName(lang)} words for a word game. Respond ONLY with JSON.`,
+        `Is "${w}" a complete, valid ${langName(lang)} word that a modern dictionary would include as its own entry (not a proper noun, abbreviation, or word whose sole meaning is a variant/archaic spelling of another word)? If yes, give a short plain-English definition (one sentence, no "variant of" hedging). Respond {"valid":true|false,"definition":"..."|null}.`,
       )
       const parsed = parseJson<{ valid: boolean; definition?: string | null }>(raw)
       if (parsed && typeof parsed.valid === 'boolean') {
